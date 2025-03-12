@@ -114,7 +114,6 @@ void processKeypadInput()
 		}
 	}
 }
-}
 
 void main()
 {
