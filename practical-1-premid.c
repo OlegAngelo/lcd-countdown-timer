@@ -1,3 +1,8 @@
+/* GOAL:
+ * 1. Continuous countdown
+ * 2. Play pause button (active-high)
+ * 3. Keypad input for increment decrement when countdown is paused
+ */
 #include <xc.h> // include file for xc8 compiler
 
 #pragma config FOSC = XT
@@ -9,8 +14,12 @@
 #pragma config WRT = OFF
 #pragma config CP = OFF
 
-unsigned char myINTF = 0;	// we use for interrupt
-unsigned char myTMR0IF = 0; // we use for delay overflow
+unsigned char myINTF = 0;		 // we use for interrupt
+unsigned char myTMR0IF = 0;		 // we use for delay overflow
+unsigned char keypadFlag = 0;	 // keypad flag
+unsigned char keypadData = 0x00; // keypad data in hex
+unsigned char counter1 = '2';	 // counter 1 in lcd
+unsigned char counter2 = '4';	 // counter 2 in lcd
 
 void delay(int count)
 {
@@ -34,6 +43,9 @@ void interrupt ISR()
 	{
 		INTF = 0;	 // reset interrupt flag manually
 		myINTF ^= 1; // xor
+
+		keypadFlag = 1;
+		keypadData = PORTD & 0x0F; // mask data
 	}
 
 	if (TMR0IF) // Timer overflow interrupt
@@ -79,14 +91,36 @@ void dataCtrl(unsigned char data)
 void clearDataResetCursor()
 {
 	instCtrl(0xC0);
-	delay(61);
+}
+
+void processKeypadInput()
+{
+	if (keypadFlag)
+	{
+		keypadFlag = 0; // Reset flag manually
+
+		if (keypadData == 0x0C) // increment when * is pressed
+		{
+			if ()
+				counter1++;
+		}
+		else if (keypadData == 0x0E) // decrement when # is pressed
+		{
+			counter2--;
+		}
+		else
+		{
+			// do nothing
+		}
+	}
+}
 }
 
 void main()
 {
 	// io config
 	TRISC = 0x00; // all ports C are output to LCD
-	TRISB = 0x00; // Set PORTB as output
+	TRISB = 0x01; // Set PORTB as output
 	TRISD = 0xFF; // all ports D are input from IC
 
 	// timer overflow config
@@ -99,8 +133,6 @@ void main()
 	initLCD();
 	instCtrl(0x02);
 
-	unsigned char counter1 = '2';
-	unsigned char counter2 = '4';
 	unsigned char currentCounter1 = counter1;
 	unsigned char currentCounter2 = counter2;
 
@@ -113,8 +145,14 @@ void main()
 
 	while (1)
 	{
-		if (RD4 == 0) // Check if keypad is high (pressed)
+		processKeypadInput();
+
+		while (myINTF)
 		{
+
+			dataCtrl(currentCounter1);
+			dataCtrl(currentCounter2);
+
 			if (currentCounter2 == '0')
 			{
 				if (currentCounter1 != '0')
@@ -127,7 +165,6 @@ void main()
 					currentCounter1 = counter1;
 					currentCounter2 = counter2;
 				}
-				delay(61);
 			}
 			else
 			{
@@ -135,12 +172,7 @@ void main()
 			}
 
 			clearDataResetCursor(); // move cursor and overwrite
-
-			dataCtrl(currentCounter1);
-			dataCtrl(currentCounter2);
-
-			while (RD4 == 1)
-				;
+			delay(25);
 		}
 	}
 }
