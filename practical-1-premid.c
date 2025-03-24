@@ -14,12 +14,20 @@
 #pragma config WRT = OFF
 #pragma config CP = OFF
 
-unsigned char myINTF = 0;		 // we use for interrupt
-unsigned char myTMR0IF = 0;		 // we use for delay overflow
-unsigned char keypadFlag = 0;	 // keypad flag
+// for interrupt
+int myINTF = 0;	  // we use for interrupt
+int myTMR0IF = 0; // we use for delay overflow
+
+// for keypad
+int keypadFlag = 0;				 // keypad flag
 unsigned char keypadData = 0x00; // keypad data in hex
-unsigned char counter1 = '2';	 // counter 1 in lcd
-unsigned char counter2 = '4';	 // counter 2 in lcd
+
+// for counter logic
+int joinedCounter = 0;
+unsigned char counter1 = '2'; // counter 1 in lcd
+unsigned char counter2 = '4'; // counter 2 in lcd
+unsigned char currentCounter1;
+unsigned char currentCounter2;
 
 void delay(int count)
 {
@@ -93,25 +101,110 @@ void clearDataResetCursor()
 	instCtrl(0xC0);
 }
 
+void joinChar()
+{
+	// join chars to int
+	unsigned char num1 = currentCounter1 - '0';
+	unsigned char num2 = currentCounter2 - '0';
+
+	joinedCounter = num1 * 10 + num2; // Convert to full number
+}
+
+void splitChar()
+{
+	// Split back to characters
+	currentCounter1 = (joinedCounter / 10) + '0';
+	currentCounter2 = (joinedCounter % 10) + '0';
+}
+
+void incrementCounter()
+{
+	// // Convert char digits to integers
+	// joinChar();
+
+	// if (joinedCounter == 24)
+	// {
+	// 	joinedCounter = 0; // Reset to zero if max reached
+	// }
+	// else
+	// {
+	// 	joinedCounter++; // Increment normally
+	// }
+
+	// splitChar();
+
+	// update lcd
+	// clearDataResetCursor();
+	// dataCtrl(currentCounter1);
+	// dataCtrl(currentCounter2);
+}
+
+void decrementCounter()
+{
+	// joinChar();
+
+	// if (joinedCounter == 0)
+	// {
+	// 	joinedCounter = 24; // Wrap to max value
+	// }
+	// else
+	// {
+	// 	joinedCounter--; // Decrement normally
+	// }
+
+	// splitChar();
+
+	// update lcd
+	// clearDataResetCursor();
+	// dataCtrl(currentCounter1);
+	// dataCtrl(currentCounter2);
+}
+
 void processKeypadInput()
 {
+	delay(10);
+
 	if (keypadFlag)
 	{
 		keypadFlag = 0; // Reset flag manually
 
-		if (keypadData == 0x0C) // increment when * is pressed
+		switch (keypadData)
 		{
-			if ()
-				counter1++;
+		case 0x0C:
+			instCtrl(0xC0);
+			dataCtrl('1');
+			dataCtrl('1');
+			dataCtrl('1');
+			delay(10);
+			break;
+		case 0x0E:
+			instCtrl(0xC0);
+			dataCtrl('2');
+			dataCtrl('2');
+			dataCtrl('2');
+			delay(10);
+			break;
+		default:
+			instCtrl(0xC0);
+			dataCtrl('4');
+			dataCtrl('3');
+			dataCtrl('3');
+			delay(10);
+			break;
 		}
-		else if (keypadData == 0x0E) // decrement when # is pressed
-		{
-			counter2--;
-		}
-		else
-		{
-			// do nothing
-		}
+
+		// if (keypadData == 0x0C) // increment when * is pressed
+		// {
+		// 	incrementCounter();
+		// }
+		// else if (keypadData == 0x0E) // decrement when # is pressed
+		// {
+		// 	decrementCounter();
+		// }
+		// else
+		// {
+		// 	// do nothing
+		// }
 	}
 }
 
@@ -132,23 +225,27 @@ void main()
 	initLCD();
 	instCtrl(0x02);
 
-	unsigned char currentCounter1 = counter1;
-	unsigned char currentCounter2 = counter2;
-
 	dataCtrl('T');
 	dataCtrl('I');
 	dataCtrl('M');
 	dataCtrl('E');
 	dataCtrl(':');
-	instCtrl(0xC0); // set cursor next line below TIME
+	instCtrl(0xC0); // Move cursor
+
+	currentCounter1 = counter1;
+	currentCounter2 = counter2;
 
 	while (1)
 	{
-		processKeypadInput();
-
-		while (myINTF)
+		if (!myINTF)
 		{
-
+			if (RD4 == 1)
+			{
+				processKeypadInput();
+			}
+		}
+		else
+		{
 			dataCtrl(currentCounter1);
 			dataCtrl(currentCounter2);
 
